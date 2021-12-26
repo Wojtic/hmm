@@ -12,6 +12,8 @@ class HMM(Gtk.Window):
         self.cursor = None
         self.tables = None
         self.tables_data = None
+        self.parsed_tables = None
+        self.MAX_COL_WIDTH = 15  # including three dots
 
         self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.add(self.box)
@@ -22,7 +24,6 @@ class HMM(Gtk.Window):
 
         self.test_label = Gtk.Label(label="test\nteijst\ntest")
         self.test_label.override_font()
-        # change font of self.test_label using set_atributes
         self.test_label.override_font(Pango.FontDescription("Monospace"))
 
         self.box.pack_start(self.test_label, True, True, 0)
@@ -42,7 +43,10 @@ class HMM(Gtk.Window):
         self.cursor.execute("SHOW TABLES")
         self.tables = [x[0] for x in self.cursor]
         self.tables_data = [self.get_table_data(x) for x in self.tables]
-        return self.tables
+        self.parsed_tables = [self.parse_table_data(
+            x) for x in self.tables_data]
+        self.test_label.set_text(self.parsed_tables[-1])
+        return self.parsed_tables
 
     def get_table_data(self, table):
         self.cursor.execute("DESCRIBE " + table)
@@ -57,6 +61,28 @@ class HMM(Gtk.Window):
         data = self.cursor.fetchall()
         # data = data.insert(0, [columns]) -------------------- Nemám tušení proč to nefunguje
         return [columns] + data
+
+    def parse_table_data(self, table_data):
+        columns = len(table_data[0])
+        column_widths = [0] * columns
+        for i in range(len(table_data)):
+            for j in range(columns):
+                if column_widths[j] < len(str(table_data[i][j])):
+                    column_widths[j] = len(str(table_data[i][j]))
+        for i in range(columns):
+            if column_widths[i] > self.MAX_COL_WIDTH:
+                column_widths[i] = self.MAX_COL_WIDTH
+        table = ""
+        for row in range(len(table_data)):
+            for column in range(columns):
+                text = str(table_data[row][column])
+                if len(text) > self.MAX_COL_WIDTH:
+                    text = text[:self.MAX_COL_WIDTH - 3] + "..."
+                table += text.ljust(column_widths[column]) + "|"
+            table = table[:-1]
+            table += "\n"
+        table = table[:-1]
+        return table
 
     def show_error_dialog(self, widget, message):
         dialog = Gtk.Dialog(title="Error",
