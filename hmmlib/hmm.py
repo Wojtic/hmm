@@ -1,6 +1,6 @@
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
+from gi.repository import Gtk, Pango
 import mysql.connector
 
 
@@ -9,19 +9,54 @@ class HMM(Gtk.Window):
     def __init__(self):
         super().__init__(title="HMM")
         self.connection_data = None
-        self.connection = None
+        self.cursor = None
+        self.tables = None
+        self.tables_data = None
+
+        self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.add(self.box)
+
         self.button = Gtk.Button(label="Connection settings")
         self.button.connect("clicked", self.show_connection_dialog)
-        self.add(self.button)
+        self.box.pack_start(self.button, True, True, 0)
+
+        self.test_label = Gtk.Label(label="test\nteijst\ntest")
+        self.test_label.override_font()
+        # change font of self.test_label using set_atributes
+        self.test_label.override_font(Pango.FontDescription("Monospace"))
+
+        self.box.pack_start(self.test_label, True, True, 0)
 
     def connect_to_database(self):
         try:
-            self.connection = mysql.connector.connect(**self.connection_data)
-            return self.connection
+            connection = mysql.connector.connect(**self.connection_data)
+            self.cursor = connection.cursor()
+            self.get_tables()
+            return connection
         except mysql.connector.Error as err:
             print(err)
             self.show_error_dialog(self, err.msg)
             return None
+
+    def get_tables(self):
+        self.cursor.execute("SHOW TABLES")
+        self.tables = [x[0] for x in self.cursor]
+        self.tables_data = [self.get_table_data(x) for x in self.tables]
+        return self.tables
+
+    def get_table_data(self, table):
+        self.cursor.execute("DESCRIBE " + table)
+        columns = self.cursor.fetchall()
+        '''primary_key = None ------------------- currently asuming primary key is the first column
+        for x in columns:
+            if 'PRI' in x:
+                primary_key = x[0]
+                break'''
+        columns = [x[0] for x in columns]
+        self.cursor.execute("SELECT * FROM " + table)
+        data = self.cursor.fetchall()
+        # data = data.insert(0, [columns]) -------------------- Nemám tušení proč to nefunguje
+        return [columns] + data
 
     def show_error_dialog(self, widget, message):
         dialog = Gtk.Dialog(title="Error",
