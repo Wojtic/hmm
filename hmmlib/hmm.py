@@ -29,10 +29,10 @@ class HMM(Gtk.Window):
         self.re_button.connect("clicked", self.get_tables)
         self.button_box.pack_start(self.re_button, True, True, 0)
 
-        self.test_label = Gtk.Label()
+        self.tables_label = Gtk.Label()
 
         self.box.pack_start(self.button_box, True, True, 0)
-        self.box.pack_start(self.test_label, True, True, 0)
+        self.box.pack_start(self.tables_label, True, True, 0)
 
     def connect_to_database(self):
         try:
@@ -53,7 +53,7 @@ class HMM(Gtk.Window):
         self.tables_data = [self.get_table_data(x) for x in self.tables]
         self.parsed_tables = [self.parse_table_data(
             x) for x in self.tables_data]
-        self.test_label.set_markup(
+        self.tables_label.set_markup(
             "<span face='monospace' >" + "\n".join(self.parsed_tables) + "</span>")
         return self.parsed_tables
 
