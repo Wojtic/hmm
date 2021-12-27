@@ -9,43 +9,52 @@ class HMM(Gtk.Window):
     def __init__(self):
         super().__init__(title="HMM")
         self.connection_data = None
+        self.connection = None
         self.cursor = None
         self.tables = None
         self.tables_data = None
         self.parsed_tables = None
         self.MAX_COL_WIDTH = 15  # including three dots
 
-        self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.add(self.box)
+        self.button_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL, spacing=6)
 
-        self.button = Gtk.Button(label="Connection settings")
-        self.button.connect("clicked", self.show_connection_dialog)
-        self.box.pack_start(self.button, True, True, 0)
+        self.con_button = Gtk.Button(label="Connection settings")
+        self.con_button.connect("clicked", self.show_connection_dialog)
+        self.button_box.pack_start(self.con_button, True, True, 0)
 
-        self.test_label = Gtk.Label(label="test\nteijst\ntest")
-        self.test_label.override_font()
-        self.test_label.override_font(Pango.FontDescription("Monospace"))
+        self.re_button = Gtk.Button(label="Refresh")
+        self.re_button.connect("clicked", self.get_tables)
+        self.button_box.pack_start(self.re_button, True, True, 0)
 
+        self.test_label = Gtk.Label()
+
+        self.box.pack_start(self.button_box, True, True, 0)
         self.box.pack_start(self.test_label, True, True, 0)
 
     def connect_to_database(self):
         try:
-            connection = mysql.connector.connect(**self.connection_data)
-            self.cursor = connection.cursor()
+            self.connection = mysql.connector.connect(**self.connection_data)
+            self.cursor = self.connection.cursor()
             self.get_tables()
-            return connection
+            return self.cursor
         except mysql.connector.Error as err:
             print(err)
             self.show_error_dialog(self, err.msg)
             return None
 
-    def get_tables(self):
+    def get_tables(self, widget=None):
+        if self.cursor is None:
+            return
         self.cursor.execute("SHOW TABLES")
         self.tables = [x[0] for x in self.cursor]
         self.tables_data = [self.get_table_data(x) for x in self.tables]
         self.parsed_tables = [self.parse_table_data(
             x) for x in self.tables_data]
-        self.test_label.set_text(self.parsed_tables[-1])
+        self.test_label.set_markup(
+            "<span face='monospace' >" + "\n".join(self.parsed_tables) + "</span>")
         return self.parsed_tables
 
     def get_table_data(self, table):
@@ -80,8 +89,9 @@ class HMM(Gtk.Window):
                     text = text[:self.MAX_COL_WIDTH - 3] + "..."
                 table += text.ljust(column_widths[column]) + "|"
             table = table[:-1]
+            if row == 0:
+                table += "\n" + "-" * (sum(column_widths) + columns - 1)
             table += "\n"
-        table = table[:-1]
         return table
 
     def show_error_dialog(self, widget, message):
