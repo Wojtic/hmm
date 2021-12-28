@@ -48,7 +48,6 @@ class HMM(Gtk.Window):
         try:
             self.connection = mysql.connector.connect(**self.connection_data)
             self.cursor = self.connection.cursor()
-            # self.get_tables()
             return self.cursor
         except mysql.connector.Error as err:
             print(err)
@@ -56,11 +55,9 @@ class HMM(Gtk.Window):
             return None
 
     def refresh_data(self, widget=None):
-        print("Refcon on refresh: " + str(self.refcon_on_refresh))
         if self.cursor is None:
             return
         if self.refcon_on_refresh:
-            print("Refreshing connection")
             self.connect_to_database()
         return self.get_tables()
 
