@@ -19,23 +19,23 @@ class HMM(Gtk.Window):
         self.refcon_on_refresh = False
         self.refresh_id = None
 
-        self.box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        self.add(self.box)
-        self.button_box = Gtk.Box(
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.add(box)
+        button_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL, spacing=6)
 
-        self.con_button = Gtk.Button(label="Connection settings")
-        self.con_button.connect("clicked", self.show_connection_dialog)
-        self.button_box.pack_start(self.con_button, True, True, 0)
+        con_button = Gtk.Button(label="Connection settings")
+        con_button.connect("clicked", self.show_connection_dialog)
+        button_box.pack_start(con_button, True, True, 0)
 
-        self.recon_button = Gtk.CheckButton(
+        recon_button = Gtk.CheckButton(
             label="Refresh whole connection (may not work if disabled)")
-        self.recon_button.connect("toggled", self.swap_refcon)
-        self.button_box.pack_start(self.recon_button, True, True, 0)
+        recon_button.connect("toggled", self.swap_refcon)
+        button_box.pack_start(recon_button, True, True, 0)
 
-        self.re_button = Gtk.Button(label="Refresh")
-        self.re_button.connect("clicked", self.refresh_data)
-        self.button_box.pack_start(self.re_button, True, True, 0)
+        re_button = Gtk.Button(label="Refresh")
+        re_button.connect("clicked", self.refresh_data)
+        button_box.pack_start(re_button, True, True, 0)
 
         times = [
             "Only button",
@@ -54,12 +54,12 @@ class HMM(Gtk.Window):
         for time in times:
             time_combo.append_text(time)
         time_combo.set_active(0)
-        self.button_box.pack_start(time_combo, True, True, 0)
+        button_box.pack_start(time_combo, True, True, 0)
 
         self.tables_label = Gtk.Label()
 
-        self.box.pack_start(self.button_box, True, True, 0)
-        self.box.pack_start(self.tables_label, True, True, 0)
+        box.pack_start(button_box, True, True, 0)
+        box.pack_start(self.tables_label, True, True, 0)
 
     def on_time_combobox_changed(self, combo):
         time = combo.get_active_text()
