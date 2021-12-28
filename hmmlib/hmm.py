@@ -96,8 +96,8 @@ class HMM(Gtk.Window):
         self.cursor.execute("SHOW TABLES")
         self.tables = [x[0] for x in self.cursor]
         self.tables_data = [self.get_table_data(x) for x in self.tables]
-        self.parsed_tables = [self.parse_table_data(
-            x) for x in self.tables_data]
+        self.parsed_tables = ["<b>" + x[1] + "</b>\n" + self.parse_table_data(
+            x[0]) for x in self.tables_data]
         self.tables_label.set_markup(
             "<span face='monospace' >" + "\n".join(self.parsed_tables) + "</span>")
         return self.parsed_tables
@@ -114,7 +114,7 @@ class HMM(Gtk.Window):
         self.cursor.execute("SELECT * FROM " + table)
         data = self.cursor.fetchall()
         # data = data.insert(0, [columns]) -------------------- Nemám tušení proč to nefunguje
-        return [columns] + data
+        return [columns] + data, table
 
     def parse_table_data(self, table_data):
         columns = len(table_data[0])
