@@ -16,6 +16,8 @@ class HMM(Gtk.Window):
         self.parsed_tables = None
         self.MAX_COL_WIDTH = 15  # including three dots
 
+        self.refcon_on_refresh = False
+
         self.box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.add(self.box)
         self.button_box = Gtk.Box(
@@ -25,8 +27,13 @@ class HMM(Gtk.Window):
         self.con_button.connect("clicked", self.show_connection_dialog)
         self.button_box.pack_start(self.con_button, True, True, 0)
 
+        self.recon_button = Gtk.CheckButton(
+            label="Refresh whole connection (may not work if disabled)")
+        self.recon_button.connect("toggled", self.swap_refcon)
+        self.button_box.pack_start(self.recon_button, True, True, 0)
+
         self.re_button = Gtk.Button(label="Refresh")
-        self.re_button.connect("clicked", self.get_tables)
+        self.re_button.connect("clicked", self.refresh_data)
         self.button_box.pack_start(self.re_button, True, True, 0)
 
         self.tables_label = Gtk.Label()
@@ -34,20 +41,30 @@ class HMM(Gtk.Window):
         self.box.pack_start(self.button_box, True, True, 0)
         self.box.pack_start(self.tables_label, True, True, 0)
 
+    def swap_refcon(self, widget=None):
+        self.refcon_on_refresh = not self.refcon_on_refresh
+
     def connect_to_database(self):
         try:
             self.connection = mysql.connector.connect(**self.connection_data)
             self.cursor = self.connection.cursor()
-            self.get_tables()
+            # self.get_tables()
             return self.cursor
         except mysql.connector.Error as err:
             print(err)
             self.show_error_dialog(self, err.msg)
             return None
 
-    def get_tables(self, widget=None):
+    def refresh_data(self, widget=None):
+        print("Refcon on refresh: " + str(self.refcon_on_refresh))
         if self.cursor is None:
             return
+        if self.refcon_on_refresh:
+            print("Refreshing connection")
+            self.connect_to_database()
+        return self.get_tables()
+
+    def get_tables(self, widget=None):
         self.cursor.execute("SHOW TABLES")
         self.tables = [x[0] for x in self.cursor]
         self.tables_data = [self.get_table_data(x) for x in self.tables]
