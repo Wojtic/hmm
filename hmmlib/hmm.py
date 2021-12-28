@@ -1,6 +1,6 @@
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Pango
+from gi.repository import Gtk, Pango, GLib
 import mysql.connector
 
 
@@ -17,6 +17,7 @@ class HMM(Gtk.Window):
         self.MAX_COL_WIDTH = 15  # including three dots
 
         self.refcon_on_refresh = False
+        self.refresh_id = None
 
         self.box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.add(self.box)
@@ -36,10 +37,39 @@ class HMM(Gtk.Window):
         self.re_button.connect("clicked", self.refresh_data)
         self.button_box.pack_start(self.re_button, True, True, 0)
 
+        times = [
+            "Only button",
+            "1 second",
+            "5 seconds",
+            "10 seconds",
+            "15 seconds",
+            "30 seconds",
+            "60 seconds",
+            "120 seconds",
+            "600 seconds",
+        ]
+        time_combo = Gtk.ComboBoxText()
+        time_combo.set_entry_text_column(0)
+        time_combo.connect("changed", self.on_time_combobox_changed)
+        for time in times:
+            time_combo.append_text(time)
+        time_combo.set_active(0)
+        self.button_box.pack_start(time_combo, True, True, 0)
+
         self.tables_label = Gtk.Label()
 
         self.box.pack_start(self.button_box, True, True, 0)
         self.box.pack_start(self.tables_label, True, True, 0)
+
+    def on_time_combobox_changed(self, combo):
+        time = combo.get_active_text()
+        if self.refresh_id is not None:
+            GLib.source_remove(self.refresh_id)
+        if time == "Only button":
+            self.refresh_id = None
+        else:
+            self.refresh_id = GLib.timeout_add(
+                int(time.split(" ")[0]) * 1000, self.refresh_data)
 
     def swap_refcon(self, widget=None):
         self.refcon_on_refresh = not self.refcon_on_refresh
@@ -59,7 +89,8 @@ class HMM(Gtk.Window):
             return
         if self.refcon_on_refresh:
             self.connect_to_database()
-        return self.get_tables()
+        self.get_tables()
+        return True
 
     def get_tables(self, widget=None):
         self.cursor.execute("SHOW TABLES")
