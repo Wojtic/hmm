@@ -1,7 +1,15 @@
 import gi
+import pickle
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, GLib
 import mysql.connector
+
+
+class Data:
+    def __init__(self, connection_data, refcon_on_refresh, data_combo_index):
+        self.connection_data = connection_data
+        self.refcon_on_refresh = refcon_on_refresh
+        self.data_combo_index = data_combo_index
 
 
 class HMM(Gtk.Window):
@@ -15,6 +23,7 @@ class HMM(Gtk.Window):
         self.tables_data = None
         self.parsed_tables = None
         self.MAX_COL_WIDTH = 15  # including three dots
+        self.data_combo_index = 0
 
         self.refcon_on_refresh = False
         self.refresh_id = None
@@ -24,14 +33,26 @@ class HMM(Gtk.Window):
         button_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL, spacing=6)
 
+        file_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+
+        save_button = Gtk.Button(label="Save")
+        save_button.connect("clicked", self.show_save_file_dialog)
+        file_box.pack_start(save_button, True, True, 0)
+
+        load_button = Gtk.Button(label="Load")
+        load_button.connect("clicked", self.show_load_file_dialog)
+        file_box.pack_start(load_button, True, True, 0)
+
+        button_box.pack_start(file_box, True, True, 0)
+
         con_button = Gtk.Button(label="Connection settings")
         con_button.connect("clicked", self.show_connection_dialog)
         button_box.pack_start(con_button, True, True, 0)
 
-        recon_button = Gtk.CheckButton(
+        self.recon_button = Gtk.CheckButton(
             label="Refresh whole connection (may not work if disabled)")
-        recon_button.connect("toggled", self.swap_refcon)
-        button_box.pack_start(recon_button, True, True, 0)
+        self.recon_button.connect("toggled", self.swap_refcon)
+        button_box.pack_start(self.recon_button, True, True, 0)
 
         re_button = Gtk.Button(label="Refresh")
         re_button.connect("clicked", self.refresh_data)
@@ -48,13 +69,13 @@ class HMM(Gtk.Window):
             "120 seconds",
             "600 seconds",
         ]
-        time_combo = Gtk.ComboBoxText()
-        time_combo.set_entry_text_column(0)
-        time_combo.connect("changed", self.on_time_combobox_changed)
+        self.time_combo = Gtk.ComboBoxText()
+        self.time_combo.set_entry_text_column(0)
+        self.time_combo.connect("changed", self.on_time_combobox_changed)
         for time in times:
-            time_combo.append_text(time)
-        time_combo.set_active(0)
-        button_box.pack_start(time_combo, True, True, 0)
+            self.time_combo.append_text(time)
+        self.time_combo.set_active(self.data_combo_index)
+        button_box.pack_start(self.time_combo, True, True, 0)
 
         self.tables_label = Gtk.Label()
 
@@ -63,6 +84,7 @@ class HMM(Gtk.Window):
 
     def on_time_combobox_changed(self, combo):
         time = combo.get_active_text()
+        self.data_combo_index = combo.get_active()
         if self.refresh_id is not None:
             GLib.source_remove(self.refresh_id)
         if time == "Only button":
@@ -149,6 +171,55 @@ class HMM(Gtk.Window):
 
         dialog.show_all()
         dialog.run()
+        dialog.destroy()
+
+    def show_save_file_dialog(self, widget):
+        dialog = Gtk.FileChooserDialog(
+            title="Please choose a file", parent=self, action=Gtk.FileChooserAction.SAVE
+        )
+        dialog.add_buttons(
+            Gtk.STOCK_CANCEL,
+            Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_SAVE,
+            Gtk.ResponseType.OK,
+        )
+
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK:
+            with open(dialog.get_filename() + ".pkl", "wb") as outp:
+                data = Data(self.connection_data,
+                            self.refcon_on_refresh, self.data_combo_index)
+                pickle.dump(data, outp,
+                            pickle.HIGHEST_PROTOCOL)
+        dialog.destroy()
+
+    def show_load_file_dialog(self, widget):
+        dialog = Gtk.FileChooserDialog(
+            title="Please choose a pkl file", parent=self, action=Gtk.FileChooserAction.OPEN
+        )
+        dialog.add_buttons(
+            Gtk.STOCK_CANCEL,
+            Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_OPEN,
+            Gtk.ResponseType.OK,
+        )
+
+        filter_ptk = Gtk.FileFilter()
+        filter_ptk.set_name("pkl files")
+        filter_ptk.add_pattern("*.pkl")
+        dialog.add_filter(filter_ptk)
+
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK:
+            with open(dialog.get_filename(), "rb") as inpt:
+                data = pickle.load(inpt)
+                self.connection_data = data.connection_data
+                self.refcon_on_refresh = data.refcon_on_refresh
+                self.data_combo_index = data.data_combo_index
+                self.connect_to_database()
+                self.recon_button.set_active(self.refcon_on_refresh)
+                self.time_combo.set_active(self.data_combo_index)
+
         dialog.destroy()
 
     def show_connection_dialog(self, widget):
