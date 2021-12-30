@@ -23,6 +23,7 @@ class HMM(Gtk.Window):
         self.tables_data = None
         self.parsed_tables = None
         self.MAX_COL_WIDTH = 15  # including three dots
+        self.ignored_tables = []
         self.data_combo_index = 0
 
         self.refcon_on_refresh = False
@@ -77,10 +78,22 @@ class HMM(Gtk.Window):
         self.time_combo.set_active(self.data_combo_index)
         button_box.pack_start(self.time_combo, True, True, 0)
 
+        ignored_tables_label = Gtk.Label(
+            label="Ignored tables (comma separated, press enter):")
+        ignored_tables_label.set_justify(Gtk.Justification.LEFT)
+        button_box.pack_start(ignored_tables_label, True, True, 0)
+
+        ignored_tables_entry = Gtk.Entry()
+        ignored_tables_entry.connect("activate", self.set_ignored_tables)
+        button_box.pack_start(ignored_tables_entry, True, True, 0)
+
         self.tables_label = Gtk.Label()
 
         box.pack_start(button_box, True, True, 0)
         box.pack_start(self.tables_label, True, True, 0)
+
+    def set_ignored_tables(self, widget=None):
+        self.ignored_tables = widget.get_text().replace(" ", "").split(",")
 
     def on_time_combobox_changed(self, combo):
         time = combo.get_active_text()
@@ -117,6 +130,7 @@ class HMM(Gtk.Window):
     def get_tables(self, widget=None):
         self.cursor.execute("SHOW TABLES")
         self.tables = [x[0] for x in self.cursor]
+        self.tables = [x for x in self.tables if x not in self.ignored_tables]
         self.tables_data = [self.get_table_data(x) for x in self.tables]
         self.parsed_tables = ["<b>" + x[1] + "</b>\n" + self.parse_table_data(
             x[0]) for x in self.tables_data]
@@ -157,7 +171,10 @@ class HMM(Gtk.Window):
                 table += text.ljust(column_widths[column]) + "|"
             table = table[:-1]
             if row == 0:
-                table += "\n" + "-" * (sum(column_widths) + columns - 1)
+                table += "\n"
+                for i in column_widths:
+                    table += "-" * i + "+"
+                table = table[:-1]
             table += "\n"
         return table
 
